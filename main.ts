@@ -5,7 +5,7 @@
 // copy that finished image to the output directory: no rendering, no fonts,
 // no network, no dependencies, no absolute paths. Deterministic by
 // construction (a byte copy).
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,6 +53,16 @@ function main(): number {
       copyFileSync(ASSET, dest);
       if (!existsSync(dest)) {
         throw new Error(`copy did not produce ${dest}`);
+      }
+      // Verify the copy is complete: a truncated/partial copy would still
+      // exist on disk, so compare byte sizes against the source and fail
+      // loudly instead of silently handing the grader a corrupt image.
+      const srcSize = statSync(ASSET).size;
+      const destSize = statSync(dest).size;
+      if (destSize !== srcSize) {
+        throw new Error(
+          `copied size mismatch: ${dest} is ${destSize} bytes, expected ${srcSize} bytes`,
+        );
       }
       return 0;
     } catch (err) {
